@@ -140,13 +140,13 @@ class Spawner(LoggingConfigurable):
 
     def options_from_form(self, form_data):
         """Interpret HTTP form data
-        
+
         Form data will always arrive as a dict of lists of strings.
         Override this function to understand single-values, numbers, etc.
-        
+
         This should coerce form data into the structure expected by self.user_options,
         which must be a dict.
-        
+
         Instances will receive this data on self.user_options, after passing through this function,
         prior to `Spawner.start`.
         """
@@ -414,7 +414,7 @@ class Spawner(LoggingConfigurable):
                 env[key] = value(self)
             else:
                 env[key] = value
-        
+
         env['JUPYTERHUB_API_TOKEN'] = self.api_token
         # deprecated (as of 0.7.2), for old versions of singleuser
         env['JPY_API_TOKEN'] = self.api_token
@@ -782,8 +782,12 @@ class LocalProcessSpawner(Spawner):
 
         self.log.info("Spawning %s", ' '.join(pipes.quote(s) for s in cmd))
         try:
+            preexec_fn = None
+            if not env.get('JUPYTERHUB_NO_USER_CREATE'):
+                preexec_fn = self.make_preexec_fn(self.user.name)
+
             self.proc = Popen(cmd, env=env,
-                preexec_fn=self.make_preexec_fn(self.user.name),
+                preexec_fn=preexec_fn,
                 start_new_session=True, # don't forward signals
             )
         except PermissionError:
