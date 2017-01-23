@@ -256,6 +256,17 @@ class Spawner(LoggingConfigurable):
         """
     ).tag(config=True)
 
+    add_user = Bool(True,
+        help="""
+        Disable user creation in OS.
+
+        When starting the user's single-user server, you can create user or not.
+        For some authentications there is no need to create user in server.
+
+        Note: Very useful for oauth or ldap authentication.
+        """
+    ).tag(config=True)
+
     @validate('notebook_dir', 'default_url')
     def _deprecate_percent_u(self, proposal):
         print(proposal)
@@ -725,7 +736,8 @@ class LocalProcessSpawner(Spawner):
 
         This function can be safely passed to `preexec_fn` of `Popen`
         """
-        return set_user_setuid(name)
+        if self.add_user:
+            return set_user_setuid(name)
 
     def load_state(self, state):
         """Restore state about spawned single-user server after a hub restart.
@@ -782,12 +794,9 @@ class LocalProcessSpawner(Spawner):
 
         self.log.info("Spawning %s", ' '.join(pipes.quote(s) for s in cmd))
         try:
-            preexec_fn = None
-            if not env.get('JUPYTERHUB_NO_USER_CREATE'):
-                preexec_fn = self.make_preexec_fn(self.user.name)
 
             self.proc = Popen(cmd, env=env,
-                preexec_fn=preexec_fn,
+                preexec_fn=self.make_preexec_fn(self.user.name),
                 start_new_session=True, # don't forward signals
             )
         except PermissionError:
